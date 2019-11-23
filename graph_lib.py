@@ -25,16 +25,39 @@ def approximate_centrality(graph):
 def betweeness_centrality(graph):
     centrality = _build_centrality_dict(graph)
     for v in graph.vertices():
+        dists, parents = dijkstra(graph, v)
+        aux = _build_centrality_dict(graph)
+
+        sorted_vertices = sorted(graph.vertices(), key=lambda x: dists[x])
+        for w in sorted_vertices:
+            if w in parents and parents[w]:
+                aux[parents[w]] += 1 + aux[w]
+
         for w in graph.vertices():
-            if v == w: continue
-            for j in shortest_path(graph, v, w):
-                centrality[j] += 1
+            if w == v: continue
+            centrality[w] += aux[w]
+
     return centrality
 
 
-def dijkstra(graph, A, B):
+def dijkstra(graph, A):
+    parents = {}
+    dists = {}
+    for v in graph.vertices():
+        dists[v] = float('inf')
+    dists[A] = 0
+    parents[A] = None
     heap = []
-    return None
+    heapq.heappush(heap, (dists[A], A))
+    while heap:
+        _, v = heapq.heappop(heap)
+        for w in graph.adjacent(v):
+            new_dist = dists[v] + graph.weight((v, w))
+            if new_dist < dists[w]:
+                dists[w] = new_dist
+                parents[w] = v
+                heapq.heappush(heap, (-dists[w], w))
+    return dists, parents
 
 
 def _reconstruct_path(parents, B):
@@ -46,7 +69,7 @@ def _reconstruct_path(parents, B):
     return stack[::-1]
 
 
-def shortest_path_bfs(graph, A, B):
+def shortest_path_bfs(graph, A):
     parents = {A: None}
     queue = collections.deque([A])
     while queue:
@@ -55,15 +78,15 @@ def shortest_path_bfs(graph, A, B):
             if w in parents: continue
             parents[w] = v
             queue.appendleft(w)
-            if w == B:
-                return _reconstruct_path(parents, B)
-    return []
+    return parents
 
 
 def shortest_path(graph, A, B):
     if graph.is_weighted():
-        return dijkstra(graph, A, B)
-    return shortest_path_bfs(graph, A, B)
+        dists, parents = dijkstra(graph, A)
+    else:
+        parents = shortest_path_bfs(graph, A)
+    return _reconstruct_path(parents, B)
 
 
 def random_walk(graph, A, iterations):

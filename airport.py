@@ -1,6 +1,7 @@
 import sys
 from graph import Graph
 import graph_lib
+import collections
 
 # Operaciones
 
@@ -10,12 +11,52 @@ def list_operations(airports, flights, args):
         print(x)
 
 
+def _base_best_path(src, dst, airports, flights, calc_weight_func):
+
+    # En el caso que el grafo sea 'unweighted' esto va a sumar 1 por cada edge, dando siempre el camino mas corto.
+    def calc_heuristic(curr_path):
+        val = 0
+        for i in range(len(curr_path)-1):
+            val += graph.weight((curr_path[i], curr_path[i+1]))
+        return val
+
+    graph = _build_graph(airports, flights, calc_weight_func)
+    city_airport_map = _build_city_airport_map(airports)
+    best_val = float('inf')
+    best = None
+
+    # Hacemos todas las combinaciones de los aeropuertos de cada ciudad y nos guardamos el mejor
+    # Como en la consigna dice que la cantidad es depreciable, el orden deberia ser igual.
+
+    for src_airport in city_airport_map[src]:
+        for dst_airport in city_airport_map[dst]:
+            path = graph_lib.shortest_path(graph, src_airport, dst_airport)
+            heuristic = calc_heuristic(path)
+            if heuristic < best_val:
+                best = path
+                best_val = heuristic
+
+    display_path(best)
+    return best
+
+
 def best_path(airports, flights, args):
-    return
+    option, src, dst = args
+
+    def calc_weight(flight):
+        return flight['price'] if option == 'barato' else flight['avg_time']
+
+    return _base_best_path(src, dst, airports, flights, calc_weight)
+
+
+def less_stops(airports, flights, args):
+    src, dst = args
+    # Pasamos una lambda que le ponga 1 de weight a todos los vertices, equivalente a q sea 'unweighted'
+    return _base_best_path(src, dst, airports, flights, lambda x: 1)
 
 
 def centrality(airports, flights, args):
-    graph = _build_centrality_graph(airports, flights)
+    graph = _build_graph(airports, flights, lambda x: x['flight_count'])
     n = int(args[0])
     display_centrality(
         graph_lib.betweeness_centrality(graph),
@@ -24,7 +65,7 @@ def centrality(airports, flights, args):
 
 
 def approximated_centrality(airports, flights, args):
-    graph = _build_centrality_graph(airports, flights)
+    graph = _build_graph(airports, flights, lambda x: x['flight_count'])
     n = int(args[0])
     display_centrality(
         graph_lib.approximate_centrality(graph),
@@ -62,16 +103,29 @@ def export_kml(airports, flights, args):
 # Auxiliaries
 
 
-def _build_centrality_graph(airports, flights):
+def _build_graph(airports, flights, weight_func=lambda x: 1):
     graph = Graph()
     for airport in airports:
         graph.add_vertex(airport['code'])
     for flight in flights:
-        graph.add_edge((flight['i'], flight['j']))
+        graph.add_edge((flight['i'], flight['j']), weight=weight_func(flight))
     return graph
 
+
+def _build_city_airport_map(airports):
+    city_map = collections.defaultdict(list)
+    for entry in airports:
+        city_map[entry['city']].extend([entry['code']])
+    return city_map
+
+
 def display_centrality(centrality, n):
-    return
+    sorted_codes = sorted(centrality.keys(), key=lambda x: -centrality[x])
+    print(', '.join(sorted_codes[:n]))
+
+
+def display_path(path):
+    print(' -> '.join(path))
 
 # Boilerplate
 
@@ -80,6 +134,7 @@ def build_command_map():
     return {
         'listar_operaciones': list_operations,
         'camino_mas': best_path,
+        'camino_escalas': less_stops,
         'centralidad': centrality,
         'centralidad_aprox': approximated_centrality,
         'pagerank': pagerank,
@@ -103,21 +158,21 @@ def load_file(path, parser):
 
 def load_airports(path):
     def parse(split_lines):
-        return [{'city': city, 'code': code, 'latitude': lat, 'longitude': long} for city, code, lat, long in split_lines]
+        return [{'city': city, 'code': code, 'latitude': float(lat), 'longitude': float(long)} for city, code, lat, long in split_lines]
 
     return load_file(path, parse)
 
 
 def load_flights(path):
     def parse(split_lines):
-        return [{'i': i, 'j': j, 'avg_time': k, 'price': l, 'flight_count': m} for i, j, k, l, m in split_lines]
+        return [{'i': i, 'j': j, 'avg_time': float(k), 'price': float(l), 'flight_count': int(m)} for i, j, k, l, m in split_lines]
     return load_file(path, parse)
 
 
 def execute_command(line, airports, flights):
     args = line.split(' ')
     name = args[0]
-    build_command_map()[name](airports, flights, args[1:])
+    return build_command_map()[name](airports, flights, [x.strip() for x in ' '.join(args[1:]).split(',')])
 
 
 if __name__ == "__main__":
@@ -126,9 +181,9 @@ if __name__ == "__main__":
         flights_path = sys.argv[2]
 
         with open('./comandos.txt', 'r') as f:
+            last_path = None
             for line in f.readlines():
-                execute_command(line, load_airports(airports_path), load_flights(flights_path))
-        #for line in sys.stdin:
-        #    execute_command(line, load_airports(airports_path), load_flights(flights_path))
+                path = execute_command(line, load_airports(airports_path), load_flights(flights_path))
+                if path is not None: last_path = path
     else:
         print(f"Uso correcto: ./{sys.argv[0]} <archivo_aeropuertos> <archivo_vuelos>")

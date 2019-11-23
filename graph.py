@@ -1,8 +1,8 @@
 class Graph:
 
-    def __init__(self, is_weighted=False):
-        self._is_weighted = is_weighted
+    def __init__(self):
         self._adjacency_list = {}
+        self._is_weighted = False
 
     def vertices(self):
         return list(self._adjacency_list.keys())
@@ -17,6 +17,7 @@ class Graph:
     def add_edge(self, edge, weight=1):
         x, y = edge
         self._adjacency_list[x][y] = weight
+        self._is_weighted = self._is_weighted or weight != 1
 
     def weight(self, edge):
         x, y = edge
