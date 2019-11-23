@@ -1,0 +1,6 @@
+content/
+settings.json
+.idea
+content/
+scheduled.json
+__pycache__

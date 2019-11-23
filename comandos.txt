@@ -1,0 +1,2 @@
+centralidad 5
+centralidad_aprox 3
