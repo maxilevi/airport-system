@@ -78,7 +78,23 @@ def pagerank(airports, flights, args):
 
 
 def new_airline(airports, flights, args):
-    return
+    out_file = args[0]
+    graph = _build_graph(airports, flights, weight_func=lambda f: f['price'], is_undirected=True)
+    mst = graph_lib.build_MST(graph)
+
+    flight_map = {}
+    for flight in flights:
+        flight_map[(flight['i'], flight['j'])] = flight
+
+    def write_if_exists(edge):
+        if edge in flight_map:
+            flight = flight_map[edge]
+            f.write(f"{flight['i']},{flight['j']},{flight['avg_time']},{flight['price']},{flight['flight_count']}\n")
+
+    with open(out_file, 'w') as f:
+        for v, w, _ in mst.edges():
+            write_if_exists((v, w))
+    print('OK')
 
 
 def world_tour(airports, flights, args):
@@ -98,13 +114,15 @@ def schedule(airports, flights, args):
 
 
 def export_kml(airports, flights, args):
+    out_path = args[0]
+
     return
 
 # Auxiliaries
 
 
-def _build_graph(airports, flights, weight_func=lambda x: 1):
-    graph = Graph()
+def _build_graph(airports, flights, weight_func=lambda x: 1, is_undirected=False):
+    graph = Graph(is_undirected=is_undirected)
     for airport in airports:
         graph.add_vertex(airport['code'])
     for flight in flights:
@@ -165,7 +183,7 @@ def load_airports(path):
 
 def load_flights(path):
     def parse(split_lines):
-        return [{'i': i, 'j': j, 'avg_time': float(k), 'price': float(l), 'flight_count': int(m)} for i, j, k, l, m in split_lines]
+        return [{'i': i, 'j': j, 'avg_time': int(k), 'price': int(l), 'flight_count': int(m)} for i, j, k, l, m in split_lines]
     return load_file(path, parse)
 
 

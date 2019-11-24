@@ -1,6 +1,7 @@
 import collections
 import heapq
 import random
+from graph import Graph
 
 RANDOM_WALK_ITERATIONS = 20
 
@@ -103,6 +104,37 @@ def random_walk(graph, A, iterations):
             parents[curr] = parent
     return _reconstruct_path(parents, curr)
 
+
+# Me gusta mas kruskal, pero ni ganas de programarme un disjoint set
+def _prim(graph):
+    # Creamos el arbol y le añadimos un vertice cualquiera.
+    mst = Graph(is_undirected=True)
+    heap = []
+    random_vertex = graph.random_vertex()
+    mst.add_vertex(random_vertex)
+
+    def queue_neighbours(v):
+        for w in graph.adjacent(v):
+            heapq.heappush(heap, (graph.weight((v, w)), (v, w)))
+
+    queue_neighbours(random_vertex)
+    visited = set([random_vertex])
+
+    while heap:
+        weight, edge = heapq.heappop(heap)
+        v, w = edge
+        if w not in visited:
+            visited.add(w)
+            queue_neighbours(w)
+            mst.add_vertex(w)
+            mst.add_edge((v, w), weight=weight)
+    return mst
+
+
+def build_MST(graph):
+    if not graph.is_undirected():
+        raise ValueError('Los digrafos no tienen MSTs')
+    return _prim(graph)
 
 def export_kml(graph, path):
     return
