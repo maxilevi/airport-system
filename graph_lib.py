@@ -138,3 +138,38 @@ def build_MST(graph):
 
 def export_kml(graph, path):
     return
+def export_kml(path, position_map):
+    final_text = []
+
+    def write(final_text, text, indent_level=0):
+        final_text.append(' ' * 4 * indent_level + text + '\n')
+
+    def write_placemark(final_text, placemark_type, coordinates_text, indent_level=0, name=None):
+        write(final_text, '<Placemark>', indent_level=0 + indent_level)
+        if name:
+            write(final_text, f'<name>{vertex}</name>', indent_level=1 + indent_level)
+        write(final_text, f'<{placemark_type}>', indent_level=1 + indent_level)
+        write(final_text, f'<coordinates>{coordinates_text}</coordinates>', indent_level=2 + indent_level)
+        write(final_text, f'</{placemark_type}>', indent_level=1 + indent_level)
+        write(final_text, '</Placemark>', indent_level=0 + indent_level)
+        write(final_text, '', indent_level=1 + indent_level)
+
+    write(final_text, '<?xml version="1.0" encoding="UTF-8"?>')
+    write(final_text, '<kml xmlns="http://www.opengis.net/kml/2.2">')
+    write(final_text, '<Document>', indent_level=1)
+    write(final_text, '<name>KML TP3</name>', indent_level=2)
+    for vertex in path:
+        lat, long = position_map[vertex]
+        write_placemark(final_text, 'Point', f'{lat}, {long}', indent_level=2, name=vertex)
+
+    for i in range(len(path)-1):
+        v = path[i]
+        w = path[i+1]
+        latv, longv = position_map[v]
+        latw, longw = position_map[w]
+        write_placemark(final_text, 'LineString', f'{latv}, {longv} {latw}, {longw}', indent_level=2)
+
+    write(final_text, '</Document>', indent_level=1)
+    write(final_text, '</kml>', indent_level=0)
+
+    return ''.join(final_text)

@@ -115,8 +115,11 @@ def schedule(airports, flights, args):
 
 def export_kml(airports, flights, args):
     out_path = args[0]
+    flight_path = args[1]
+    airport_map = _build_airport_position_map(airports)
 
-    return
+    with open(out_path, 'w') as f:
+        f.write(graph_lib.export_kml(flight_path, airport_map))
 
 # Auxiliaries
 
@@ -128,6 +131,13 @@ def _build_graph(airports, flights, weight_func=lambda x: 1, is_undirected=False
     for flight in flights:
         graph.add_edge((flight['i'], flight['j']), weight=weight_func(flight))
     return graph
+
+
+def _build_airport_position_map(airports):
+    airport_map = {}
+    for entry in airports:
+        airport_map[entry['code']] = (entry['latitude'], entry['longitude'])
+    return airport_map
 
 
 def _build_city_airport_map(airports):
@@ -164,6 +174,7 @@ def build_command_map():
         'exportar_kml': export_kml
     }
 
+
 def load_file(path, parser):
     contents = []
     with open(path, 'r') as f:
@@ -187,10 +198,14 @@ def load_flights(path):
     return load_file(path, parse)
 
 
-def execute_command(line, airports, flights):
+def execute_command(line, airports, flights, last_path):
     args = line.split(' ')
     name = args[0]
-    return build_command_map()[name](airports, flights, [x.strip() for x in ' '.join(args[1:]).split(',')])
+    arguments = [x.strip() for x in ' '.join(args[1:]).split(',')]
+    # Esto es como un hack porque si lo paso a todos los comando no puedo hacer unpacking e.g. x, y = args
+    if 'exportar_kml' == name:
+        arguments += [last_path]
+    return build_command_map()[name](airports, flights, arguments)
 
 
 if __name__ == "__main__":
@@ -201,7 +216,7 @@ if __name__ == "__main__":
         with open('./comandos.txt', 'r') as f:
             last_path = None
             for line in f.readlines():
-                path = execute_command(line, load_airports(airports_path), load_flights(flights_path))
+                path = execute_command(line, load_airports(airports_path), load_flights(flights_path), last_path)
                 if path is not None: last_path = path
     else:
         print(f"Uso correcto: ./{sys.argv[0]} <archivo_aeropuertos> <archivo_vuelos>")
