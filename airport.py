@@ -106,7 +106,21 @@ def approximated_world_tour(airports, flights, args):
 
 
 def vacations(airports, flights, args):
-    return
+    src, n = args
+    city_airport_map = _build_city_airport_map(airports)
+    graph = _build_graph(airports, flights)
+
+    path = None
+    for airport in city_airport_map[src]:
+        path = graph_lib.find_n_cycle(graph, int(n), airport)
+        if path:
+            break
+
+    if not path:
+        print('No se encontro recorrido')
+    else:
+        display_path(path)
+    return path
 
 
 def schedule(airports, flights, args):

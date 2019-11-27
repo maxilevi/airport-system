@@ -136,7 +136,33 @@ def build_MST(graph):
         raise ValueError('Los digrafos no tienen MSTs')
     return _prim(graph)
 
-def export_kml(graph, path):
+
+def find_n_cycle(graph, n, A):
+    # La idea es generar todos lo caminos de n vertices que sale de A y ver cuales forman un ciclo
+
+    def _find_n_cycle(path, visited):
+        visited.add(path[-1])
+        if len(path) == (n+1):
+            if path[-1] == A:
+                return path
+            return None
+
+        for w in graph.adjacent(path[-1]):
+            if w in visited:
+                continue
+            result = _find_n_cycle(path + [w], visited)
+            if result:
+                return result
+
+        return None
+
+    for v in graph.adjacent(A):
+        starting_path = [v]
+        cycle = _find_n_cycle(starting_path, set())
+        if cycle:
+            return [A] + cycle
+    return None
+
     return
 def export_kml(path, position_map):
     final_text = []
