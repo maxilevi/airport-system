@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import sys
 from graph import Graph
 import graph_lib
@@ -8,7 +10,9 @@ import collections
 
 def list_operations(airports, flights, args):
     for x in build_command_map().keys():
-        print(x)
+        # Medio un hack pero bueno
+        if not x == 'listar_operaciones':
+            print(x)
 
 
 def _base_best_path(src, dst, airports, flights, calc_weight_func):
@@ -31,6 +35,7 @@ def _base_best_path(src, dst, airports, flights, calc_weight_func):
     for src_airport in city_airport_map[src]:
         for dst_airport in city_airport_map[dst]:
             path = graph_lib.shortest_path(graph, src_airport, dst_airport)
+            if not path: continue
             heuristic = calc_heuristic(path)
             if heuristic < best_val:
                 best = path
@@ -79,7 +84,7 @@ def pagerank(airports, flights, args):
 
 def new_airline(airports, flights, args):
     out_file = args[0]
-    graph = _build_graph(airports, flights, weight_func=lambda f: f['price'], is_undirected=True)
+    graph = _build_graph(airports, flights, weight_func=lambda f: f['price'])
     mst = graph_lib.build_MST(graph)
 
     flight_map = {}
@@ -97,12 +102,28 @@ def new_airline(airports, flights, args):
     print('OK')
 
 
+def _base_world_tour(airports, flights, args, path_builder):
+    src = args[0]
+    city_airport_map = _build_city_airport_map(airports)
+    graph = _build_graph(airports, flights, weight_func=lambda x: x['price'])
+    min_cost = float('inf')
+    min_path = None
+    for airport in city_airport_map[src]:
+        curr_min_cost, curr_min_path = path_builder(graph, airport)
+        if curr_min_path and curr_min_cost < min_cost:
+            min_cost = curr_min_cost
+            min_path = curr_min_path
+    display_path(min_path)
+    print(f'Costo: {min_cost}')
+    return min_path
+
+
 def world_tour(airports, flights, args):
-    return
+    return _base_world_tour(airports, flights, args, graph_lib.path_visiting_every_vertex)
 
 
 def approximated_world_tour(airports, flights, args):
-    return
+    return _base_world_tour(airports, flights, args, graph_lib.approximated_path_visiting_every_vertex)
 
 
 def vacations(airports, flights, args):
@@ -124,7 +145,25 @@ def vacations(airports, flights, args):
 
 
 def schedule(airports, flights, args):
-    return
+    file_path = args[0]
+    restrictions = []
+    with open(file_path, 'r') as f:
+        lines = f.readlines()
+        cities = [x.strip() for x in lines[0].split(',')]
+        for i in range(1, len(lines)):
+            i, j = [x.strip() for x in lines[i].split(',')]
+            restrictions.append((i, j))
+
+    graph = Graph()
+    for city in cities:
+        graph.add_vertex(city)
+    for edge in restrictions:
+        graph.add_edge(edge)
+
+    sorted_vertices = graph_lib.topological_sort(graph)
+    print(', '.join(sorted_vertices))
+    for i in range(len(sorted_vertices)-1):
+        less_stops(airports, flights, [sorted_vertices[i], sorted_vertices[i+1]])
 
 
 def export_kml(airports, flights, args):
@@ -138,7 +177,7 @@ def export_kml(airports, flights, args):
 # Auxiliaries
 
 
-def _build_graph(airports, flights, weight_func=lambda x: 1, is_undirected=False):
+def _build_graph(airports, flights, weight_func=lambda x: 1, is_undirected=True):
     graph = Graph(is_undirected=is_undirected)
     for airport in airports:
         graph.add_vertex(airport['code'])
@@ -214,7 +253,7 @@ def load_flights(path):
 
 def execute_command(line, airports, flights, last_path):
     args = line.split(' ')
-    name = args[0]
+    name = args[0].strip()
     arguments = [x.strip() for x in ' '.join(args[1:]).split(',')]
     # Esto es como un hack porque si lo paso a todos los comando no puedo hacer unpacking e.g. x, y = args
     if 'exportar_kml' == name:
@@ -222,15 +261,19 @@ def execute_command(line, airports, flights, last_path):
     return build_command_map()[name](airports, flights, arguments)
 
 
-if __name__ == "__main__":
+def execute():
     if len(sys.argv) == 3:
         airports_path = sys.argv[1]
         flights_path = sys.argv[2]
 
-        with open('./comandos.txt', 'r') as f:
-            last_path = None
+        last_path = None
+        with open('comandos.txt', 'r') as f:
             for line in f.readlines():
                 path = execute_command(line, load_airports(airports_path), load_flights(flights_path), last_path)
                 if path is not None: last_path = path
     else:
         print(f"Uso correcto: ./{sys.argv[0]} <archivo_aeropuertos> <archivo_vuelos>")
+
+
+if __name__ == "__main__":
+    execute()
