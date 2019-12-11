@@ -86,22 +86,19 @@ def new_airline(airports, flights, args):
     flight_map = {}
     for flight in flights:
         flight_map[(flight['i'], flight['j'])] = flight
-
-    def write_if_exists(edge):
-        if edge in flight_map:
-            flight = flight_map[edge]
-            f.write(f"{flight['i']},{flight['j']},{flight['avg_time']},{flight['price']},{flight['flight_count']}\n")
+        flight_map[(flight['j'], flight['i'])] = flight
 
     with open(out_file, 'w') as f:
-        for v, w, _ in mst.edges():
-            write_if_exists((v, w))
+        for v, w, weight in mst.edges():
+            flight = flight_map[(v, w)]
+            f.write(f"{flight['i']},{flight['j']},{flight['avg_time']},{flight['price']},{flight['flight_count']}\n")
     print('OK')
 
 
 def _base_world_tour(airports, flights, args, path_builder):
     src = args[0]
     city_airport_map = _build_city_airport_map(airports)
-    graph = _build_graph(airports, flights, weight_func=lambda x: x['price'])
+    graph = _build_graph(airports, flights, weight_func=lambda x: x['avg_time'])
     min_cost = float('inf')
     min_path = None
     for airport in city_airport_map[src]:
@@ -172,12 +169,14 @@ def export_kml(airports, flights, args):
 
 # Auxiliaries
 
+
 def _build_graph(airports, flights, weight_func=lambda x: 1, is_undirected=True):
     graph = Graph(is_undirected=is_undirected)
     for airport in airports:
         graph.add_vertex(airport['code'])
     for flight in flights:
-        graph.add_edge((flight['i'], flight['j']), weight=weight_func(flight))
+        edge = (flight['i'], flight['j'])
+        graph.add_edge(edge, weight=weight_func(flight))
     return graph
 
 
@@ -249,7 +248,7 @@ def execute_command(line, airports, flights, last_path):
     args = line.split(' ')
     name = args[0].strip()
     arguments = [x.strip() for x in ' '.join(args[1:]).split(',')]
-    # Esto es como un hack porque si lo paso a todos los comando no puedo hacer unpacking e.g. x, y = args
+    # Esto es algo medio feo pero si lo paso a todos los comandos no puedo hacer unpacking e.g. x, y = args
     if 'exportar_kml' == name:
         arguments += [last_path]
     return build_command_map()[name](airports, flights, arguments)

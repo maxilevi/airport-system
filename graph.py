@@ -1,5 +1,6 @@
 import random
 
+
 class Graph:
 
     def __init__(self, is_undirected=False):
@@ -15,15 +16,18 @@ class Graph:
         edge_list = []
         for v in self.vertices():
             new_edges = [(v, u, self.weight((v, u))) for u in self.adjacent(v)]
-            # Hago esto para evitar que si el grafo es no dirigido no haya aristas duplicadas
             for edge in new_edges:
-                if edge not in visited:
+                u, v, weight = edge
+                if (u, v) not in visited and (v, u) not in visited:
                     edge_list.append(edge)
-                    visited.add(edge)
+                    visited.add((u, v))
         return edge_list
 
     def adjacent(self, vertex):
         return list([x for x in self._adjacency_list[vertex].keys()])
+
+    def is_adjacent(self, origin, vertex):
+        return vertex in self._adjacency_list[origin]
 
     def add_vertex(self, vertex):
         if vertex not in self._adjacency_list:
@@ -42,7 +46,7 @@ class Graph:
 
     def random_vertex(self):
         vertex_list = self.vertices()
-        return vertex_list[random.randint(0, len(vertex_list)-1)]
+        return vertex_list[random.randint(0, len(vertex_list) - 1)]
 
     def is_weighted(self):
         return self._is_weighted

@@ -5,8 +5,6 @@ from graph import Graph
 
 RANDOM_WALK_LENGTH = 20
 
-def page_rank(graph):
-    return
 
 def approximate_centrality(graph):
     centrality = collections.defaultdict(int)
@@ -123,8 +121,7 @@ def _prim(graph):
     mst.add_vertex(random_vertex)
 
     _queue_neighbours(graph, heap, random_vertex)
-    visited = set([random_vertex])
-
+    visited = {random_vertex}
     while heap:
         weight, edge = heapq.heappop(heap)
         v, w = edge
@@ -159,7 +156,6 @@ def path_visiting_every_vertex(graph, A):
             w = remaining[i]
             if cost + costs[w] > best_cost_so_far:
                 continue
-
             shortest = _reconstruct_path(parents, w)
             remaining_copy = remaining[:]
 
@@ -201,27 +197,40 @@ def approximated_path_visiting_every_vertex(graph, A):
 
 
 def find_n_cycle(graph, n, A):
-    # La idea es generar todos lo caminos de n vertices que sale de A y ver cuales forman un ciclo
+    dists, _ = shortest_path_bfs(graph, A)
 
+    # La idea es generar todos lo caminos de n vertices que sale de A y ver cuales forman un ciclo
     def _find_n_cycle(path, visited):
 
         if len(path) == n:
             if path[-1] == A:
-                return path
+                return path[:]
+            return None
+        elif path[-1] == A:
+            return None
+
+        if dists[path[-1]] > n-len(path):
             return None
 
         for w in graph.adjacent(path[-1]):
-            if w in visited:
+            if (w in visited) or (len(path) == n-1 and A != w) or (len(path) == n-2 and not graph.is_adjacent(w, A)):
                 continue
             visited.add(w)
-            result = _find_n_cycle(path + [w], visited)
+            path.append(w)
+            result = _find_n_cycle(path, visited)
+            path.pop()
             visited.remove(w)
             if result:
                 return result
 
         return None
 
-    for v in graph.adjacent(A):
+    adjacents = graph.adjacent(A)
+    #Si vertice tiene 1 solo adjacente entonces sera imposible encontrar un ciclo sin repetir
+    if len(adjacents) < 2 and n > 1:
+        return None
+
+    for v in adjacents:
         cycle = _find_n_cycle([v], {v})
         if cycle:
             return [A] + cycle
