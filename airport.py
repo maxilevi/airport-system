@@ -78,10 +78,6 @@ def approximated_centrality(airports, flights, args):
     )
 
 
-def pagerank(airports, flights, args):
-    return
-
-
 def new_airline(airports, flights, args):
     out_file = args[0]
     graph = _build_graph(airports, flights, weight_func=lambda f: f['price'])
@@ -217,7 +213,6 @@ def build_command_map():
         'camino_escalas': less_stops,
         'centralidad': centrality,
         'centralidad_aprox': approximated_centrality,
-        #'pagerank': pagerank,
         'nueva_aerolinea': new_airline,
         'recorrer_mundo': world_tour,
         'recorrer_mundo_aprox': approximated_world_tour,
