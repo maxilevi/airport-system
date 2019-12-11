@@ -3,36 +3,29 @@ import heapq
 import random
 from graph import Graph
 
-RANDOM_WALK_ITERATIONS = 20
+RANDOM_WALK_LENGTH = 20
 
 def page_rank(graph):
     return
 
-def _build_centrality_dict(graph):
-    centrality = {}
-    for v in graph.vertices():
-        centrality[v] = 0
-    return centrality
-
-
 def approximate_centrality(graph):
-    centrality = _build_centrality_dict(graph)
+    centrality = collections.defaultdict(int)
     for v in graph.vertices():
-        for j in random_walk(graph, v, RANDOM_WALK_ITERATIONS):
+        for j in random_walk(graph, v, RANDOM_WALK_LENGTH):
             centrality[j] += 1
     return centrality
 
 
 def betweeness_centrality(graph):
-    centrality = _build_centrality_dict(graph)
+    centrality = collections.defaultdict(int)
     for v in graph.vertices():
         dists, parents = dijkstra(graph, v)
-        aux = _build_centrality_dict(graph)
+        aux = collections.defaultdict(int)
 
-        sorted_vertices = sorted(graph.vertices(), key=lambda x: dists[x])
+        sorted_vertices = sorted(graph.vertices(), key=lambda x: -dists[x])
         for w in sorted_vertices:
-            if w in parents and parents[w]:
-                aux[parents[w]] += 1 + aux[w]
+            if w == v: continue
+            aux[parents[w]] += 1 + aux[w]
 
         for w in graph.vertices():
             if w == v: continue
@@ -49,7 +42,7 @@ def dijkstra(graph, A):
     dists[A] = 0
     parents[A] = None
     heap = []
-    heapq.heappush(heap, (-dists[A], A))
+    heapq.heappush(heap, (dists[A], A))
     while heap:
         _, v = heapq.heappop(heap)
         for w in graph.adjacent(v):
@@ -57,7 +50,7 @@ def dijkstra(graph, A):
             if new_dist < dists[w]:
                 dists[w] = new_dist
                 parents[w] = v
-                heapq.heappush(heap, (-dists[w], w))
+                heapq.heappush(heap, (dists[w], w))
     return dists, parents
 
 
@@ -97,18 +90,23 @@ def shortest_path(graph, A, B):
 
 
 def random_walk(graph, A, iterations):
-    if graph.is_weighted():
-        raise NotImplementedError('')
-
-    parent = None
-    parents = {A: parent}
-    curr = A
+    path = [A]
     for i in range(iterations):
-        neighbours = graph.adjacent(curr)
+        neighbours = graph.adjacent(path[-1])
         if neighbours:
-            parent, curr = curr, neighbours[random.randint(0, len(graph.adjacent(A))-1)]
-            parents[curr] = parent
-    return _reconstruct_path(parents, curr)
+            weights = [graph.weight((path[-1], x)) for x in neighbours]
+            path.append(random_weighted_vertex(weights, neighbours))
+    return path
+
+
+def random_weighted_vertex(weights, neighbours):
+    total = sum(weights)
+    rand = random.uniform(0, total)
+    accumulated = 0
+    for i in range(len(neighbours)):
+        if accumulated + weights[i] >= rand:
+            return neighbours[i]
+        accumulated += weights[i]
 
 
 def _queue_neighbours(graph, heap, v):
@@ -146,36 +144,38 @@ def build_MST(graph):
 
 def path_visiting_every_vertex(graph, A):
 
-    def visit(path, remaining, cost, min_cost, min_path):
+    def visit(path, remaining, cost, results, best_cost_so_far):
 
         if len(remaining) == 0:
-            return cost, path
+            results.append((cost, path))
+            return best_cost_so_far if best_cost_so_far < cost else cost
 
-        # PODA, si el costo es mayor o igual al minimo y todavia falta agregar, nunca va a poder llegar a ser mejor
-        if cost >= min_cost:
-            return None, None
+        # PODA, Si ya existe uno mejor, ni sigamos
+        if cost > best_cost_so_far:
+            return best_cost_so_far
 
+        costs, parents = dijkstra(graph, path[-1])
         for i in range(len(remaining)):
             w = remaining[i]
-            dists, parents = dijkstra(graph, path[-1])
-            shortest = _reconstruct_path(parents, w)[1:]
-            remaining_copy = remaining[:i] + remaining[i+1:]
+            if cost + costs[w] > best_cost_so_far:
+                continue
+
+            shortest = _reconstruct_path(parents, w)
+            remaining_copy = remaining[:]
 
             # Sacamos los vertices por los que el camino paso. Ya los visitamos
+            contained = set(remaining_copy)
             for vertex in shortest:
-                if vertex in remaining_copy:
+                if vertex in contained:
                     remaining_copy.remove(vertex)
 
-            curr_cost, curr_path = visit(path + shortest, remaining_copy, cost + dists[w], min_cost, min_path)
-            if curr_path:
-                if curr_cost < min_cost:
-                    min_cost = curr_cost
-                    min_path = curr_path
+            best_cost_so_far = visit(path + shortest[1:], remaining_copy, cost + costs[w], results, best_cost_so_far)
 
-        return min_cost, min_path
+        return best_cost_so_far
 
-    best_cost, best_path = visit([A], [x for x in graph.vertices() if x != A], 0, float('inf'), None)
-    return best_cost, best_path
+    results = []
+    visit([A], [x for x in graph.vertices() if x != A], 0, results, float('inf'))
+    return min(results)
 
 
 def approximated_path_visiting_every_vertex(graph, A):
@@ -205,7 +205,7 @@ def find_n_cycle(graph, n, A):
 
     def _find_n_cycle(path, visited):
 
-        if len(path) == (n+1):
+        if len(path) == n:
             if path[-1] == A:
                 return path
             return None
@@ -222,8 +222,7 @@ def find_n_cycle(graph, n, A):
         return None
 
     for v in graph.adjacent(A):
-        starting_path = [v]
-        cycle = _find_n_cycle(starting_path, set())
+        cycle = _find_n_cycle([v], {v})
         if cycle:
             return [A] + cycle
     return None

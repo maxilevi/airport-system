@@ -61,7 +61,7 @@ def less_stops(airports, flights, args):
 
 
 def centrality(airports, flights, args):
-    graph = _build_graph(airports, flights, lambda x: x['flight_count'])
+    graph = _build_graph(airports, flights, lambda x: 1.0 / x['flight_count'])
     n = int(args[0])
     display_centrality(
         graph_lib.betweeness_centrality(graph),
@@ -176,7 +176,6 @@ def export_kml(airports, flights, args):
 
 # Auxiliaries
 
-
 def _build_graph(airports, flights, weight_func=lambda x: 1, is_undirected=True):
     graph = Graph(is_undirected=is_undirected)
     for airport in airports:
@@ -218,7 +217,7 @@ def build_command_map():
         'camino_escalas': less_stops,
         'centralidad': centrality,
         'centralidad_aprox': approximated_centrality,
-        'pagerank': pagerank,
+        #'pagerank': pagerank,
         'nueva_aerolinea': new_airline,
         'recorrer_mundo': world_tour,
         'recorrer_mundo_aprox': approximated_world_tour,
