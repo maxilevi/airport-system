@@ -261,10 +261,9 @@ def execute():
         flights_path = sys.argv[2]
 
         last_path = None
-        with open('comandos.txt', 'r') as f:
-            for line in f.readlines():
-                path = execute_command(line, load_airports(airports_path), load_flights(flights_path), last_path)
-                if path is not None: last_path = path
+        for line in sys.stdin:
+            path = execute_command(line, load_airports(airports_path), load_flights(flights_path), last_path)
+            if path is not None: last_path = path
     else:
         print(f"Uso correcto: ./{sys.argv[0]} <archivo_aeropuertos> <archivo_vuelos>")
 
